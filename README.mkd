@@ -1,0 +1,113 @@
+
+# COM3505 Lab Assessment 1
+
+## Introduction 
+The purpose of this report is to demonstrate the touch sensing capabilities of the touch sensor on the ESP32. The idea is to use a wire to connect to one of the [10 GPIOs (pins) for touch sensing][link-1] and use the value from this touch sensor to blink external LEDs. Only one LED will blink at a time, which will be determined by the strength of the input of the touch sensor. 
+
+## Hardware
+The hardware used includes the breadboard, the ESP32, the yellow, red and green LEDs, three 120 ohm resistors, a USB to micro-USB cable and wires. The resistors are used to prevent the LEDs from overheating due to too much current flow. These components are shown below. 
+
+![All hardware](images/components.JPG)*Photo of all the hardware components used.* 
+
+At the top, there are wires. To the leftmost end, there are the LEDs. Next to the LEDs, there is the breakboard. Next to this is the ESP32 followed by the resistors. To rightmost end, there is the USB to micro-USB cable. These components are used to build the circuit
+
+![Full circuit](images/full_setup.JPG)*Photo of the circuit used*
+
+The figure above shows the picture of the circuit that was used. It was inspired by [the traffic light system][link-3]. GPIO 4 was used to measure the touch value from the touch sensor. The blue wire is connected to this pin. The strength of the touch value can be controlled by pressing the blue wire. The red wire lights up the red led and is connected to GPIO 32. The yellow wire is connected to the yellow LED and GPIO 15. The green wire lights up the green LED and is connected to GPIO 32. The black wire is used for grounding. The pins were found by using the [ESP32 pin layout][link-2]. The circuit works by sending current to the LEDs using the output pins and determines the touch value from the pin connected to the touch sensor. The LED that lights up depends on the strength of the touch value. Different touch values can be obtained by pressing the metal tip and the insulated part of the blue wire. This wire is connected to the touch sensor of the ESP32. 
+
+
+## Code
+The code consists of three main functions, which are the `void setup()` function, the `void blinkLED()` function and the `void loop()` function. Before this some important constants and variables are initialised. 
+
+```
+// define serial speed
+static const int SERIAL_SPEED = 115200;
+
+// define the touch pin number
+#define touchPin T0
+
+// LEDs 
+uint8_t ledPins[] = {GPIO_NUM_27,GPIO_NUM_15,GPIO_NUM_32};
+ 
+// number of led pins
+uint8_t numLedPins = sizeof(ledPins)/sizeof(uint8_t);
+
+// variable for storing touch value
+int touchValue;
+
+// threshold for yellow LED
+const int LED_YELLOW = 60; 
+
+// threshold for red LED
+const int LED_RED = 20; 
+```
+
+If the value from the touch sensor is below the threshold, then the corresponding LED for the threshold will light up. The more pressure on the touch sensor, the lower the touch value. These threshold values were found by logging the output of the touch sensor to the serial logger and by changing the part of the blue wire that was pressed. It was found that when the blue wire is not pressed, the touch value is around 70. When the insulation of the blue wire is pressed, the touch value is less than 60 and when the metal tip of the wire is pressed, the touch value is less than 20. 
+
+The `setup()` configures the pins connected to the LEDs as output pins. This is done using the code below. 
+
+```
+ for(int i = 0; i < numLedPins; i++) {
+      // set up external led pins
+      pinMode(ledPins[i], OUTPUT);     
+      // turn off to begin    
+      digitalWrite(ledPins[i], LOW);      
+    }
+```
+
+The function to blink the LED is given below. It works by turning on the LED, then waiting for 0.3 seconds and then turning off the LED. 
+```
+  void blinkLed(int ledIndex){
+    // turn on led with the index provided
+    digitalWrite(ledPins[ledIndex],HIGH);
+    // wait for 300 milliseconds
+    delay(300);
+    // turn off led with the index provided
+    digitalWrite(ledPins[ledIndex],LOW);
+  }
+```
+The `ledIndex` parameter refers to the index of the LED to be blinked in the `ledPins` array.  
+
+The main loop is given below.
+
+```
+void loop(){
+  // get the value of the touch pin
+  touchValue = touchRead(touchPin);
+  // print the touch value to the serial monitor
+  Serial.println(touchValue); 
+
+  // if the touch value is less than the threshold for red led
+  if(touchValue < LED_RED){
+      // blink the red led 
+      blinkLed(2);
+    }
+   // if the touch value is less than the threshold for yellow led
+   else if (touchValue < LED_YELLOW){
+      // blink yellow led
+      blinkLed(1);
+    }
+    else {
+      // blink green led
+      blinkLed(0);
+    }
+    delay(300);
+    
+  }
+```
+In this loop, the touchValue is assigned. Then, the LED corresponding to the lowest LED threshold that the touch value is lower than is blinked. If the touch value is less than the threshold for the red LED, the red LED is blinked. If the touch value is less than the threshold for the yellow LED but is bigger than the red LED, the yellow LED is blinked. If the touch value is bigger than both the red and yellow LED threshold, the green LED is blinked.
+
+
+## Results 
+The video demo of the system working is shown [here](video/working_demo.mp4).
+
+
+The serial plotter with the touch values is shown below. 
+
+![serial plotter](images/serial_plot.png)*Serial plotter graph*
+
+The x-axis is the number of iterations. The y axis is the touch value. The touch value was recorded for approximately 130 iterations. The steep crashes to below 20 is when the red light is blinking. The less steep clashes to less than 60 but above 20 is when the yellow light is blinking. At all other times, the green light is blinking. There are small fluctuations in the graph without any change in the LEDs blinking. This is caused by some random noise in the environment such as the position of the metal tip of the wire on the table. The further the tip is from the table, the more sensitive the touch sensor is. This means that if the tip is further away from the table, there will be a bigger change to the touch value for the same amount of pressure applied to the wire. 
+
+[link-1]: https://iot.unphone.net/#the-esps-sense-of-touch
+[link-2]: https://learn.adafruit.com/adafruit-huzzah32-esp32-feather/pinouts
+[link-3]: https://iot.unphone.net/#extension-to-blinky-exercise-02
